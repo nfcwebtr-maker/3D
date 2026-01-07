@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Baskı Maliyet Hesaplayıcısı | AD5X Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .input-card {
+            background: #252525;
+            border: 1px solid #333;
+            transition: border-color 0.3s ease;
+        }
+        .input-card:focus-within {
+            border-color: #6366f1;
+        }
+        input {
+            background: transparent;
+            outline: none;
+            width: 100%;
+            color: white;
+            font-size: 1.1rem;
+        }
+        label {
+            color: #9ca3af;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body class="bg-[#1E1E1E] text-white min-h-screen">
+
+    <div class="max-w-5xl mx-auto px-4 py-10">
+        <header class="flex items-center justify-between mb-12">
+            <div>
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-500">
+                    3DPCC <span class="text-white/20 font-light">|</span> Maliyet Hesaplama
+                </h1>
+                <p class="text-gray-400 text-sm mt-1">Cihaz: Flashforge AD5X (PLA Mode)</p>
+            </div>
+            <div class="text-right hidden sm:block">
+                <div class="text-xs text-gray-500 uppercase">Elektrik Birim Fiyatı</div>
+                <div class="text-indigo-400 font-bold text-lg">6.00 TL / kWh</div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-2 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="input-card p-4 rounded-2xl">
+                        <label>Filament Fiyatı (1kg / TL)</label>
+                        <input type="number" id="filamentPrice" value="550" oninput="calculate()">
+                    </div>
+                    <div class="input-card p-4 rounded-2xl">
+                        <label>Ürün Ağırlığı (Gram)</label>
+                        <input type="number" id="weight" value="50" oninput="calculate()">
+                    </div>
+                    <div class="input-card p-4 rounded-2xl">
+                        <label>Baskı Süresi (Saat)</label>
+                        <input type="number" id="time" value="2" oninput="calculate()">
+                    </div>
+                    <div class="input-card p-4 rounded-2xl">
+                        <label>İşçilik / Ek Gider (Saatlik TL)</label>
+                        <input type="number" id="labor" value="40" oninput="calculate()">
+                    </div>
+                </div>
+
+                <div class="input-card p-6 rounded-2xl">
+                    <div class="flex justify-between mb-4">
+                        <label>Kâr Marjı (%)</label>
+                        <span id="marginLabel" class="text-indigo-400 font-bold">50%</span>
+                    </div>
+                    <input type="range" id="margin" min="0" max="300" value="50" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" oninput="calculate()">
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-indigo-600 rounded-[2rem] p-8 shadow-2xl shadow-indigo-500/20 flex flex-col justify-between h-full min-h-[400px]">
+                    <div>
+                        <h3 class="text-indigo-100 text-sm uppercase tracking-widest font-semibold mb-6">Fiyatlandırma Özeti</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="flex justify-between border-b border-indigo-500/30 pb-2">
+                                <span class="text-indigo-200">Malzeme:</span>
+                                <span id="outMaterial" class="font-semibold">0.00 TL</span>
+                            </div>
+                            <div class="flex justify-between border-b border-indigo-500/30 pb-2">
+                                <span class="text-indigo-200">Elektrik:</span>
+                                <span id="outElec" class="font-semibold">0.00 TL</span>
+                            </div>
+                            <div class="flex justify-between border-b border-indigo-500/30 pb-2">
+                                <span class="text-indigo-200">İşçilik:</span>
+                                <span id="outLabor" class="font-semibold">0.00 TL</span>
+                            </div>
+                            <div class="flex justify-between pt-2 text-white">
+                                <span class="font-bold">Toplam Maliyet:</span>
+                                <span id="outTotalCost" class="font-bold underline decoration-indigo-300">0.00 TL</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-10">
+                        <div class="text-xs text-indigo-200 uppercase mb-1">Tavsiye Edilen Satış Fiyatı</div>
+                        <div id="outFinalPrice" class="text-5xl font-black text-white">0.00 TL</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-12 text-center text-gray-600 text-xs">
+            Flashforge AD5X (0.09kW) & 6 TL/kWh baz alınarak hesaplanır.
+        </footer>
+    </div>
+
+    <script>
+        function calculate() {
+            // Elementleri çek
+            const filamentPrice = parseFloat(document.getElementById('filamentPrice').value) || 0;
+            const weight = parseFloat(document.getElementById('weight').value) || 0;
+            const time = parseFloat(document.getElementById('time').value) || 0;
+            const labor = parseFloat(document.getElementById('labor').value) || 0;
+            const margin = parseFloat(document.getElementById('margin').value) || 0;
+
+            // AD5X PLA Sabitleri
+            const consumptionKW = 0.09; // 90 Watt ortalama
+            const elecPricePerKwh = 6.00; // Kullanıcının fiyatı
+
+            // 1. Malzeme Maliyeti (1kg fiyatından grama)
+            const materialCost = (filamentPrice / 1000) * weight;
+
+            // 2. Elektrik Maliyeti (Saat * 0.09kW * 6TL)
+            const energyCost = time * consumptionKW * elecPricePerKwh;
+
+            // 3. İşçilik Maliyeti
+            const laborCost = time * labor;
+
+            // 4. Toplam Maliyet
+            const totalCost = materialCost + energyCost + laborCost;
+
+            // 5. Final Fiyat
+            const finalPrice = totalCost * (1 + margin / 100);
+
+            // UI Güncelleme
+            document.getElementById('marginLabel').innerText = margin + "%";
+            document.getElementById('outMaterial').innerText = materialCost.toFixed(2) + " TL";
+            document.getElementById('outElec').innerText = energyCost.toFixed(2) + " TL";
+            document.getElementById('outLabor').innerText = laborCost.toFixed(2) + " TL";
+            document.getElementById('outTotalCost').innerText = totalCost.toFixed(2) + " TL";
+            document.getElementById('outFinalPrice').innerText = finalPrice.toFixed(2) + " TL";
+        }
+
+        // Sayfa açıldığında ilk hesabı yap
+        window.onload = calculate;
+    </script>
+</body>
+</html>
